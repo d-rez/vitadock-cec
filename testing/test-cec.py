@@ -5,8 +5,9 @@
 import cec
 import time
 
+
 def cec_callback(event, *args):
-  print(repr(event), repr(args))
+    print(repr(event), repr(args))
 
 
 cec.add_callback(cec_callback, cec.EVENT_ALL & ~cec.EVENT_LOG)
