@@ -20,6 +20,12 @@
     sudo systemctl daemon-reload
 ```
 
+4. Replace ffmpeg and mpv builds with re-compiled ones that support python module required by this script
+```
+sudo dpkg -i packages/ffmpeg_4.0.2-1_armhf.deb
+sudo dpkg -i packages/mpv_0.29.0-1_armhf.deb
+```
+
 4. Install to start on boot and start the script
 ```
 (crontab -l 2>/dev/null; echo "@reboot python3 /home/pi/vitadock-cec/vitadock-cec.py") | crontab -
@@ -31,4 +37,6 @@ By default the script will log its debug messages to `/home/pi/vitadock-cec/vita
 
 ## Configuration and notes
 \# TODO
-For now it only supports MPV. I started developing a framework for VLC as well but imo VLC starts too slow, MPV is much superior in this regard (and nobody needs a full GUI that boots 2 minutes longer)
+For now it only supports MPV. I started developing a framework for VLC as well but imo VLC starts too slow, MPV is much superior in this regard (and imo nobody needs a full GUI that boots 3 minutes longer)
+
+If there's a need for VLC version, I may consider it someday based on feedback and interest
