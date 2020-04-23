@@ -4,15 +4,23 @@
 ## Installation
 1. Install dependencies
 ```
-    sudo apt-get update && sudo apt-get install -y git python3-pip cec-utils
-    sudo pip3 install cec python-vlc pyudev
+    sudo apt-get update && sudo apt-get install -y git python3-pip libcec-dev build-essential python3-dev
+    sudo pip3 install pip --upgrade && sudo pip3 install cec python-vlc pyudev python-mpv
 ```
 2. Fetch the repo
 ```
     git clone https://github.com/d-rez/vitadock-cec.git /home/pi/vitadock-cec
 ```
 
-3. Install to start on boot and start the script
+3. Disable current implementation of device detection (udev)
+```
+    sudo rm /etc/udev/rules.d/91-vita.rules /etc/udev/rules.d/92-dvita.rules
+    sudo rm /etc/systemd/user/vita.service
+    sudo udevadm control --reload-rules
+    sudo systemctl daemon-reload
+```
+
+4. Install to start on boot and start the script
 ```
 (crontab -l 2>/dev/null; echo "@reboot python3 /home/pi/vitadock-cec/vitadock-cec.py") | crontab -
 python3 /home/pi/vitadock-cec/vitadock-cec.py&
