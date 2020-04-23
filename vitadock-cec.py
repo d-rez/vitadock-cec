@@ -7,6 +7,7 @@ import time
 from threading import Lock, Thread
 from pyudev import Context, Monitor, MonitorObserver
 import mpv
+import logging
 
 last_routing_change_time = 0
 
@@ -16,19 +17,21 @@ streaming = False
 was_streaming_before_poweroff = False
 player_object = None
 
+logging.basicConfig(filename='/home/pi/vitadock-cec/vitadock-cec.log', level=logging.INFO)
+logging.getLogger().addHandler(logging.StreamHandler())
+
 
 def control_mpv(enable):
     global player_object, streaming
     if not player_object:
         player_object = mpv.MPV(fullscreen=True, profile="low-latency", fps=60, framedrop="no", speed=1.21, really_quiet=True)
     if enable and not streaming:
-        print("Starting stream")
+        logging.info("Starting stream")
         player_object.play("/dev/video0")
         with Lock():
             streaming = True
     if not enable and streaming:
-        print("Terminating stream")
-        # player_object.terminate()
+        logging.info("Terminating stream")
         player_object.command("stop")
         with Lock():
             streaming = False
@@ -48,10 +51,10 @@ def check_tv_source():
     time.sleep(2)
     with Lock():
         if not src_isdock:
-            print("TV source changed")
+            logging.info("TV source changed")
             player_control(False)
         elif vita_isconnected:
-            print("TV source changed to VitaDock")
+            logging.info("TV source changed to VitaDock")
             player_control(True)
 
 
@@ -61,12 +64,12 @@ def cec_callback(event, *args):
     if event == cec.EVENT_COMMAND:
         args = args[0]
         if args['opcode'] == cec.CEC_OPCODE_STANDBY:
-            print("TV off")
+            logging.info("TV off")
             if streaming:
                 was_streaming_before_poweroff = True
             player_control(False)
         elif args['opcode'] == cec.CEC_OPCODE_ROUTING_CHANGE:
-            # print("TV changing source... waiting for activation request")
+            logging.debug("TV changing source... waiting for activation request")
             last_routing_change_time = time.time()
             t = Thread(target=check_tv_source)
             src_isdock = False
@@ -75,9 +78,9 @@ def cec_callback(event, *args):
                 and args['initiator'] == cec.CECDEVICE_TV
                 and args['destination'] == cec.CECDEVICE_BROADCAST):
             # This should mean that TV has just been turned ON
-            print("TV on")
+            logging.info("TV on")
             if not streaming and was_streaming_before_poweroff:
-                print("Resuming previous stream")
+                logging.info("Resuming previous stream")
                 player_control(True)
     elif event == cec.EVENT_ACTIVATED:
         if last_routing_change_time != 0 and time.time() - last_routing_change_time < 1:
@@ -90,21 +93,20 @@ def udev_log_event(action, device):
     if action == "add" and device.attributes.get("name") == b"PSVita":
         with Lock():
             vita_isconnected = True
-        print("Vita connected")
+        logging.info("Vita connected")
         player_control(True)
     if action == "remove":
         with Lock():
             vita_isconnected = False
-        print("Vita disconnected")
+        logging.info("Vita disconnected")
         player_control(False)
 
 
 udev_context = Context()
 for device in udev_context.list_devices(subsystem="video4linux"):
-    # print(device)
     if device.attributes.get("name") == b"PSVita":
         vita_isconnected = True
-        print("Init: Vita was already connected")
+        logging.info("Init: Vita was already connected")
 udev_monitor = Monitor.from_netlink(udev_context)
 udev_monitor.filter_by(subsystem='video4linux')
 
@@ -113,15 +115,15 @@ observer = MonitorObserver(udev_monitor, udev_log_event)
 observer.start()
 
 #  cec.add_callback(cb, cec.EVENT_COMMAND & cec.EVENT_ACTIVATED)
-print("Init: Ading CEC callbacks")
+logging.info("Init: Ading CEC callbacks")
 cec.add_callback(cec_callback, cec.EVENT_ALL & ~cec.EVENT_LOG)
 
-print("Init: CEC library")
+logging.info("Init: CEC library")
 cec.init()
 
 tv = cec.Device(cec.CEC_DEVICE_TYPE_TV)
-print("Current TV state: ", "on" if tv.is_on() else "off")
-print("Current Vita state: ", "connected" if vita_isconnected else "not connected")
+logging.info("Current TV state: ", "on" if tv.is_on() else "off")
+logging.info("Current Vita state: ", "connected" if vita_isconnected else "not connected")
 
 if tv.is_on() and vita_isconnected:
     #  Assume Pi was restarted?
