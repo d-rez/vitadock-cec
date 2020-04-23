@@ -12,3 +12,6 @@ Just follow main instructions of the script or run these two commands from insid
 sudo dpkg -i ffmpeg_4.0.2-1_armhf.deb
 sudo dpkg -i mpv_0.29.0-1_armhf.deb
 ```
+
+# License Information
+Note: My project's license obviously doesn't apply to packages in this folder, each package has its own license and was compiled without any code changes other than listed in the project linked above

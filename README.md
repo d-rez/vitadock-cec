@@ -4,20 +4,20 @@
 ## Installation
 1. Install dependencies
 ```
-    sudo apt-get update && sudo apt-get install -y git python3-pip libcec-dev build-essential python3-dev
-    sudo pip3 install pip --upgrade && sudo pip3 install cec python-vlc pyudev python-mpv
+sudo apt-get update && sudo apt-get install -y git python3-pip libcec-dev build-essential python3-dev
+sudo pip3 install pip --upgrade && sudo pip3 install cec python-vlc pyudev python-mpv
 ```
 2. Fetch the repo
 ```
-    git clone https://github.com/d-rez/vitadock-cec.git /home/pi/vitadock-cec
+git clone https://github.com/d-rez/vitadock-cec.git /home/pi/vitadock-cec
 ```
 
 3. Disable current implementation of device detection (udev)
 ```
-    sudo rm /etc/udev/rules.d/91-vita.rules /etc/udev/rules.d/92-dvita.rules
-    sudo rm /etc/systemd/user/vita.service
-    sudo udevadm control --reload-rules
-    sudo systemctl daemon-reload
+sudo rm /etc/udev/rules.d/91-vita.rules /etc/udev/rules.d/92-dvita.rules
+sudo rm /etc/systemd/user/vita.service
+sudo udevadm control --reload-rules
+sudo systemctl daemon-reload
 ```
 
 4. Replace ffmpeg and mpv builds with re-compiled ones that support python module required by this script
