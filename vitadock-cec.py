@@ -6,82 +6,82 @@ import cec
 import time
 from threading import Lock, Thread
 from pyudev import Context, Monitor, MonitorObserver
-# import mpv
+import mpv
 
 last_routing_change_time = 0
 
 src_isdock = False
 vita_isconnected = False
-tv_power = False
-player_launched = False
+streaming = False
+was_streaming_before_poweroff = False
 player_object = None
 
 
 def control_mpv(enable):
-    global player_object, player_launched
-    if enable and not player_launched:
-        # player_object = mpv.MPV(fullscreen=True, profile="low-latency", fps=60, framedrop="no", speed=1.21, really_quiet=True)
-        # player_object.play("/dev/video0")
-        print("Would start stream")
+    global player_object, streaming
+    if not player_object:
+        player_object = mpv.MPV(fullscreen=True, profile="low-latency", fps=60, framedrop="no", speed=1.21, really_quiet=True)
+    if enable and not streaming:
+        print("Starting stream")
+        player_object.play("/dev/video0")
         with Lock():
-            player_launched = True
-    if not enable and player_launched:
+            streaming = True
+    if not enable and streaming:
+        print("Terminating stream")
         # player_object.terminate()
-        print("Would start stream")
+        player_object.command("stop")
         with Lock():
-            player_launched = False
+            streaming = False
 
 
 def player_control(enable):
     # some logic here like choosing player and sending commands to it
     control_mpv(enable)
 
-    # set CEC active
-    cec.set_active_source()
+    # set CEC active to wake up / switch to TV Source
+    if enable:
+        cec.set_active_source()
 
 
 def check_tv_source():
     global src_isdock
-    print("Waiting 2 seconds to see if the new TV source is vitadock")
     time.sleep(2)
     with Lock():
         if not src_isdock:
+            print("TV source changed")
             player_control(False)
         elif vita_isconnected:
+            print("TV source changed to VitaDock")
             player_control(True)
 
 
 def cec_callback(event, *args):
-    global last_routing_change_time, src_isdock
+    global last_routing_change_time, src_isdock, was_streaming_before_poweroff
 
     if event == cec.EVENT_COMMAND:
         args = args[0]
         if args['opcode'] == cec.CEC_OPCODE_STANDBY:
             print("TV off")
+            if streaming:
+                was_streaming_before_poweroff = True
             player_control(False)
         elif args['opcode'] == cec.CEC_OPCODE_ROUTING_CHANGE:
-            print("TV changing source... waiting for activation request")
+            # print("TV changing source... waiting for activation request")
             last_routing_change_time = time.time()
             t = Thread(target=check_tv_source)
             src_isdock = False
             t.start()
-        #  else:
-        #    print("Got event", event, "with data", args)
+        elif (args['opcode'] == cec.CEC_OPCODE_REPORT_PHYSICAL_ADDRESS
+                and args['initiator'] == cec.CECDEVICE_TV
+                and args['destination'] == cec.CECDEVICE_BROADCAST):
+            # This should mean that TV has just been turned ON
+            print("TV on")
+            if not streaming and was_streaming_before_poweroff:
+                print("Resuming previous stream")
+                player_control(True)
     elif event == cec.EVENT_ACTIVATED:
         if last_routing_change_time != 0 and time.time() - last_routing_change_time < 1:
             src_isdock = True
-            if not player_launched and vita_isconnected:
-                print("Activation request received, starting stream")
-                player_control(True)
-    #  else:
-    #    print("Got event", event, "with data", args)
-
-
-def decision_dispatcher():
-    """ We decide here based on multiple factors whether we want to launch stream, kill it, or do nothing """
-    global vita_isconnected
-    with Lock():
-        pass
 
 
 #  setup udev
@@ -91,13 +91,12 @@ def udev_log_event(action, device):
         with Lock():
             vita_isconnected = True
         print("Vita connected")
+        player_control(True)
     if action == "remove":
         with Lock():
             vita_isconnected = False
         print("Vita disconnected")
-    # print(device)
-    # print_attributes(device)
-    decision_dispatcher()
+        player_control(False)
 
 
 udev_context = Context()
@@ -114,16 +113,12 @@ observer = MonitorObserver(udev_monitor, udev_log_event)
 observer.start()
 
 #  cec.add_callback(cb, cec.EVENT_COMMAND & cec.EVENT_ACTIVATED)
+print("Init: Ading CEC callbacks")
 cec.add_callback(cec_callback, cec.EVENT_ALL & ~cec.EVENT_LOG)
 
-print("Callbacks added")
-time.sleep(2)
-
-print("Initializing CEC library")
+print("Init: CEC library")
 cec.init()
 
-# First run - get params
-# Creating Device object for TV
 tv = cec.Device(cec.CEC_DEVICE_TYPE_TV)
 print("Current TV state: ", "on" if tv.is_on() else "off")
 print("Current Vita state: ", "connected" if vita_isconnected else "not connected")
@@ -131,6 +126,9 @@ print("Current Vita state: ", "connected" if vita_isconnected else "not connecte
 if tv.is_on() and vita_isconnected:
     #  Assume Pi was restarted?
     player_control(True)
+else:
+    player_control(False)
 
 while True:
+    # loop forever
     time.sleep(10)
