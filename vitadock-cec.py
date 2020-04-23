@@ -122,8 +122,8 @@ logging.info("Init: CEC library")
 cec.init()
 
 tv = cec.Device(cec.CEC_DEVICE_TYPE_TV)
-logging.info("Current TV state: ", "on" if tv.is_on() else "off")
-logging.info("Current Vita state: ", "connected" if vita_isconnected else "not connected")
+logging.info("Current TV state: " + "on" if tv.is_on() else "off")
+logging.info("Current Vita state: " + "connected" if vita_isconnected else "not connected")
 
 if tv.is_on() and vita_isconnected:
     #  Assume Pi was restarted?
