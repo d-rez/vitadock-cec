@@ -22,8 +22,8 @@ sudo systemctl daemon-reload
 
 4. Replace ffmpeg and mpv builds with re-compiled ones that support python module required by this script
 ```
-sudo dpkg -i packages/ffmpeg_4.0.2-1_armhf.deb
-sudo dpkg -i packages/mpv_0.29.0-1_armhf.deb
+sudo dpkg -i /home/pi/vitadock-cec/packages/ffmpeg_4.0.2-1_armhf.deb
+sudo dpkg -i /home/pi/vitadock-cec/packages/mpv_0.29.0-1_armhf.deb
 ```
 
 4. Install to start on boot and start the script
